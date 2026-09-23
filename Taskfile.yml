@@ -1,9 +1,9 @@
 version: "3"
 
 vars:
+  # The version lives in wails.json (info.productVersion); the app embeds it.
   VERSION:
-    sh: git describe --tags --always 2>/dev/null || date +%Y.%m.%d
-  LDFLAGS: -X main.version={{.VERSION}}
+    sh: python3 -c "import json;print(json.load(open('wails.json'))['info']['productVersion'])"
   # WebKitGTK API used on Linux: "" for webkit2gtk-4.0, "webkit2_41" for webkit2gtk-4.1
   WEBKIT_TAGS: '{{.WEBKIT_TAGS | default "webkit2_41"}}'
 
@@ -50,10 +50,30 @@ tasks:
     cmds:
       - scripts/install-linux.sh build/bin/BelMemories
 
+  version:
+    desc: Print the current app version (wails.json info.productVersion)
+    cmds:
+      - echo {{.VERSION}}
+
+  release:
+    desc: "Bump the version, commit and tag it: task release -- 1.2.0"
+    preconditions:
+      - sh: '[ -n "{{.CLI_ARGS}}" ]'
+        msg: "usage: task release -- 1.2.0"
+      - sh: echo "{{.CLI_ARGS}}" | grep -Eq '^[0-9]+\.[0-9]+(\.[0-9]+)?$'
+        msg: "version must look like 1.2 or 1.2.0"
+      - sh: git diff --quiet && git diff --cached --quiet
+        msg: "commit or stash your changes first"
+    cmds:
+      - python3 -c "import json,sys;p='wails.json';d=json.load(open(p));d['info']['productVersion']=sys.argv[1];open(p,'w').write(json.dumps(d,indent=2,ensure_ascii=False)+'\n')" {{.CLI_ARGS}}
+      - git commit -am "chore: release v{{.CLI_ARGS}}"
+      - git tag -a v{{.CLI_ARGS}} -m "BelMemories {{.CLI_ARGS}}"
+      - echo "tagged v{{.CLI_ARGS}} — push with git push --follow-tags"
+
   build:linux:
     desc: Build Linux amd64 binary into build/bin/BelMemories
     cmds:
-      - wails build -clean -platform linux/amd64 -tags "{{.WEBKIT_TAGS}}" -ldflags "{{.LDFLAGS}}"
+      - wails build -clean -platform linux/amd64 -tags "{{.WEBKIT_TAGS}}"
 
   build:windows:
     desc: Cross-build Windows amd64 .exe (needs mingw-w64-gcc because of cgo/onnxruntime)
@@ -62,7 +82,7 @@ tasks:
       CC: x86_64-w64-mingw32-gcc
       CXX: x86_64-w64-mingw32-g++
     cmds:
-      - wails build -platform windows/amd64 -ldflags "{{.LDFLAGS}}"
+      - wails build -platform windows/amd64
 
   package:linux:
     desc: Build and assemble dist/BelMemories-linux (+ zip) with model and onnxruntime

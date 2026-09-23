@@ -25,12 +25,9 @@ var appIcon []byte
 // matches against belmemories.desktop to show the taskbar icon.
 const linuxAppID = "belmemories"
 
-// version is injected at build time: -ldflags "-X main.version=1.2.3".
-var version = "dev"
-
 func main() {
 	moved, migrateErr := logging.MigrateLegacyDir()
-	_, logPath := logging.Setup(logging.Options{Stderr: version == "dev"})
+	_, logPath := logging.Setup(logging.Options{Stderr: devBuild})
 	if moved {
 		slog.Info("settings moved from the legacy MemoryArchive directory", "dir", logging.AppConfigDir())
 	} else if migrateErr != nil {

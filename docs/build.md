@@ -63,6 +63,18 @@ The `-extldflags` part matters: `zig cc` ignores the `-mwindows` flag Go passes 
 
 You can also build natively on Windows (Go + Node.js + [MSYS2 mingw-w64](https://www.msys2.org/)).
 
+## Versions
+
+The version has one source: `info.productVersion` in `wails.json` (`1.1.0`). The app embeds that file, so "About", the log and the Windows `.exe` properties always show the same version — also in `wails dev`, with no `-ldflags` needed.
+
+Releases use semantic versioning — `1.1.0` → `1.1.1` for fixes, `1.2.0` for new features, `2.0.0` for breaking changes:
+
+```bash
+task version              # print the current version
+task release -- 1.2.0     # set it in wails.json, commit and create tag v1.2.0
+git push --follow-tags    # publish the commit and the tag
+```
+
 ## Icons and Linux desktop integration
 
 All icons are generated from a single square PNG with a transparent background:

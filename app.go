@@ -71,7 +71,7 @@ func NewApp(logPath string) *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	a.log.Info("app started", "version", version, "os", goruntime.GOOS, "arch", goruntime.GOARCH, "log", a.logPath)
+	a.log.Info("app started", "version", appVersion(), "os", goruntime.GOOS, "arch", goruntime.GOARCH, "log", a.logPath)
 	// Load the model in the background so the window appears immediately.
 	go func() {
 		st := a.getClassifier().Status()
@@ -171,7 +171,7 @@ type AppInfo struct {
 // GetAppInfo returns program, author and environment facts.
 func (a *App) GetAppInfo() AppInfo {
 	return AppInfo{
-		Name: appName, Version: version, Author: appAuthor, Email: appEmail, RepoURL: appRepoURL,
+		Name: appName, Version: appVersion(), Author: appAuthor, Email: appEmail, RepoURL: appRepoURL,
 		OS: goruntime.GOOS, Arch: goruntime.GOARCH,
 		ConfigDir: logging.AppConfigDir(), LogPath: a.logPath,
 		Classifier: a.getClassifier().Status(),
