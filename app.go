@@ -453,6 +453,14 @@ func (a *App) Reindex(root string) error {
 
 // OpenPath opens a folder or file with the system file manager/viewer.
 func (a *App) OpenPath(path string) error {
+	if goruntime.GOOS == "linux" {
+		err := openWithActivation(path)
+		if err == nil {
+			a.log.Info("[FIX] opened via GTK (with activation token)", "path", path)
+			return nil
+		}
+		a.log.Warn("[FIX] GTK open failed, falling back to xdg-open", "path", path, "err", err)
+	}
 	var cmd *exec.Cmd
 	switch goruntime.GOOS {
 	case "windows":
