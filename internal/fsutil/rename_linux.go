@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"memoryarchive/internal/logging"
+	"belmemories/internal/logging"
 )
 
 // RenameNoReplace atomically renames oldPath to newPath, failing with

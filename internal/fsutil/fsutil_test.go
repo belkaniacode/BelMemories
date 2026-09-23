@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"memoryarchive/internal/hashing"
+	"belmemories/internal/hashing"
 )
 
 func TestRenameNoReplaceNeverOverwrites(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 
 	mp4 "github.com/abema/go-mp4"
 
-	"memoryarchive/internal/logging"
+	"belmemories/internal/logging"
 )
 
 var isoBMFFExts = map[string]bool{"mp4": true, "m4v": true, "mov": true, "3gp": true, "3g2": true}

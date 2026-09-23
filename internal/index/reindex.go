@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"memoryarchive/internal/hashing"
-	"memoryarchive/internal/layout"
-	"memoryarchive/internal/media"
+	"belmemories/internal/hashing"
+	"belmemories/internal/layout"
+	"belmemories/internal/media"
 )
 
 // ReindexProgress reports reindexing state.

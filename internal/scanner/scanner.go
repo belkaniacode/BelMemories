@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"memoryarchive/internal/logging"
-	"memoryarchive/internal/media"
+	"belmemories/internal/logging"
+	"belmemories/internal/media"
 )
 
 // Item is a media file found during scanning.

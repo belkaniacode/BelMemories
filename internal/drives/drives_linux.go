@@ -11,7 +11,8 @@ import (
 
 	"golang.org/x/sys/unix"
 
-	"memoryarchive/internal/logging"
+	"belmemories/internal/i18n"
+	"belmemories/internal/logging"
 )
 
 // Pseudo and system filesystems that are never user data disks.
@@ -32,7 +33,7 @@ func List() []Drive {
 	seen := map[string]bool{}
 
 	if home, err := os.UserHomeDir(); err == nil {
-		if d, ok := stat(home, "Домашняя папка", false); ok {
+		if d, ok := stat(home, i18n.Pick("Домашняя папка", "Home folder"), false); ok {
 			out = append(out, d)
 			seen[home] = true
 		}
@@ -66,7 +67,7 @@ func List() []Drive {
 		}
 		label := filepath.Base(mnt)
 		if mnt == "/" {
-			label = "Системный диск (/)"
+			label = i18n.Pick("Системный диск (/)", "System disk (/)")
 		}
 		if d, ok := stat(mnt, label, removable); ok {
 			mounts = append(mounts, d)

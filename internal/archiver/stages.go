@@ -10,13 +10,14 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"memoryarchive/internal/fsutil"
-	"memoryarchive/internal/hashing"
-	"memoryarchive/internal/index"
-	"memoryarchive/internal/layout"
-	"memoryarchive/internal/media"
-	"memoryarchive/internal/metadata"
-	"memoryarchive/internal/scanner"
+	"belmemories/internal/fsutil"
+	"belmemories/internal/hashing"
+	"belmemories/internal/i18n"
+	"belmemories/internal/index"
+	"belmemories/internal/layout"
+	"belmemories/internal/media"
+	"belmemories/internal/metadata"
+	"belmemories/internal/scanner"
 )
 
 // errDuplicate rejects a copy whose content is already archived.
@@ -191,9 +192,9 @@ func (p *pipeline) write(ctx context.Context, j *job) {
 	}
 
 	free, err := fsutil.FreeSpace(p.root)
-	if err == nil && int64(free) < it.Size+reserveBytes {
-		p.log.Error("destination almost full, stopping", "free", free, "need", it.Size+reserveBytes)
-		p.cancel(fmt.Errorf("%w: свободно %d МБ", ErrNoSpace, free>>20))
+	if err == nil && int64(free) < it.Size+ReserveBytes {
+		p.log.Error("destination almost full, stopping", "free", free, "need", it.Size+ReserveBytes)
+		p.cancel(fmt.Errorf(i18n.Pick("%w: свободно %d МБ", "%w: %d MB free"), ErrNoSpace, free>>20))
 		return
 	}
 

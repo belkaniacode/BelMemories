@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"memoryarchive/internal/media"
-	"memoryarchive/internal/scanner"
-	"memoryarchive/internal/testutil"
+	"belmemories/internal/media"
+	"belmemories/internal/scanner"
+	"belmemories/internal/testutil"
 )
 
 func TestFromFilename(t *testing.T) {

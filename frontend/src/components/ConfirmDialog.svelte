@@ -1,10 +1,11 @@
 <script lang="ts">
+  import { tr } from '../lib/i18n'
   let {
     open,
     title,
     text,
-    confirmLabel = 'Да',
-    cancelLabel = 'Отмена',
+    confirmLabel = tr('Да', 'Yes'),
+    cancelLabel = tr('Отмена', 'Cancel'),
     danger = false,
     onconfirm,
     oncancel,
@@ -40,7 +41,7 @@
     background: rgba(0, 0, 0, 0.45);
     display: grid;
     place-items: center;
-    z-index: 10;
+    z-index: 30; /* above AboutDialog (20): close confirmation must stay visible */
     padding: 16px;
   }
   .dialog {

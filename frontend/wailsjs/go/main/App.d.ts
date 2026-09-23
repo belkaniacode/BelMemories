@@ -13,7 +13,11 @@ export function ClassifierStatus():Promise<classify.Status>;
 
 export function ConfirmClose():Promise<void>;
 
+export function GetAppInfo():Promise<main.AppInfo>;
+
 export function GetDestinationInfo(arg1:string):Promise<main.DestinationInfo>;
+
+export function GetLanguage():Promise<string>;
 
 export function GetSettings():Promise<config.Settings>;
 
@@ -22,6 +26,8 @@ export function ListDrives():Promise<Array<drives.Drive>>;
 export function LogFrontendError(arg1:string):Promise<void>;
 
 export function OpenPath(arg1:string):Promise<void>;
+
+export function OpenURL(arg1:string):Promise<void>;
 
 export function PauseArchive():Promise<void>;
 
@@ -36,3 +42,5 @@ export function SaveSettings(arg1:config.Settings):Promise<void>;
 export function StartArchive(arg1:main.ArchiveRequest):Promise<void>;
 
 export function StartScan(arg1:Array<string>):Promise<void>;
+
+export function SystemTheme():Promise<string>;

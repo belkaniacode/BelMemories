@@ -2,6 +2,7 @@
 export * as Backend from '../../wailsjs/go/main/App.js'
 export { EventsOn } from '../../wailsjs/runtime/runtime.js'
 import { LogFrontendError } from '../../wailsjs/go/main/App.js'
+import { numberLocale, tr } from './i18n'
 
 export type LoadLevel = 'low' | 'medium' | 'high'
 
@@ -71,7 +72,6 @@ export interface Report {
   noDate: FileResult[] | null
   mtimeDates: FileResult[] | null
   planned?: FileResult[] | null
-  missingArchives?: string[] | null
   reportPath: string
   csvPath: string
 }
@@ -83,21 +83,24 @@ export interface ClassifierStatus {
   libPath: string
 }
 
-const units = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ']
+function units(): string[] {
+  return tr('Б КБ МБ ГБ ТБ', 'B KB MB GB TB').split(' ')
+}
 
 export function fmtBytes(n: number): string {
-  if (!n || n < 0) return '0 Б'
+  const u = units()
+  if (!n || n < 0) return `0 ${u[0]}`
   let i = 0
   let v = n
-  while (v >= 1024 && i < units.length - 1) {
+  while (v >= 1024 && i < u.length - 1) {
     v /= 1024
     i++
   }
-  return `${v.toLocaleString('ru-RU', { maximumFractionDigits: v < 10 && i > 0 ? 1 : 0 })} ${units[i]}`
+  return `${v.toLocaleString(numberLocale(), { maximumFractionDigits: v < 10 && i > 0 ? 1 : 0 })} ${u[i]}`
 }
 
 export function fmtNum(n: number): string {
-  return (n ?? 0).toLocaleString('ru-RU')
+  return (n ?? 0).toLocaleString(numberLocale())
 }
 
 export function fmtDuration(sec: number): string {
@@ -105,9 +108,9 @@ export function fmtDuration(sec: number): string {
   const h = Math.floor(sec / 3600)
   const m = Math.floor((sec % 3600) / 60)
   const s = Math.floor(sec % 60)
-  if (h > 0) return `${h} ч ${m} мин`
-  if (m > 0) return `${m} мин ${s} с`
-  return `${s} с`
+  if (h > 0) return tr(`${h} ч ${m} мин`, `${h} h ${m} min`)
+  if (m > 0) return tr(`${m} мин ${s} с`, `${m} min ${s} s`)
+  return tr(`${s} с`, `${s} s`)
 }
 
 export function errorText(e: unknown): string {

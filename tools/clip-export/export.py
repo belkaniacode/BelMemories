@@ -8,7 +8,7 @@ Run once by a developer; the output goes to ../../models:
 Usage:
     python -m venv .venv && . .venv/bin/activate
     pip install -r requirements.txt
-    python export.py [--out ../../models] [--no-quantize]
+    python export.py [--out ../../models] [--no-quantize] [--labels-only]
 """
 
 import argparse
@@ -27,17 +27,26 @@ from transformers import (
 MODEL_ID = "openai/clip-vit-base-patch32"
 
 # Each label averages several prompts. "group" decides the archive folder:
-# photo → Фото, picture → Картинки.
+# photo → Фото, picture → Картинки. Labels in HUMAN mark images with people:
+# the app keeps those in Фото unless the picture score is overwhelming.
+# Prompts were calibrated on real phone/social-network photos vs screenshots
+# and app icons (people in cars, on vehicles, low-quality photos used to
+# leak into Картинки).
 LABELS = [
-    ("person", "photo", ["a photo of a person", "a portrait photo of a man or a woman", "a selfie"]),
-    ("people", "photo", ["a group photo of people", "a photo of a family", "a photo of friends at a party"]),
+    ("person", "photo", ["a photo of a person", "a portrait photo of a man or a woman", "a selfie",
+                         "an amateur photo of a young man", "a photo of a man in sunglasses"]),
+    ("people", "photo", ["a group photo of people", "a photo of a family", "a photo of friends at a party",
+                         "a photo of friends hugging"]),
     ("child", "photo", ["a photo of a child", "a photo of a baby"]),
+    ("driver", "photo", ["a photo of a man driving a car", "a photo of a person sitting in a car",
+                         "a photo of a person riding a motorbike or a quad bike"]),
     ("animal", "photo", ["a photo of a pet", "a photo of a dog", "a photo of a cat", "a photo of an animal"]),
     ("nature", "photo", ["a landscape photo", "a photo of nature", "a photo of the sea", "a photo of mountains"]),
     ("city", "photo", ["a photo of a city street", "a photo of a building", "a travel photo"]),
     ("food", "photo", ["a photo of food", "a photo of a meal on a table"]),
     ("indoor", "photo", ["a photo of a room", "a photo taken indoors at home", "a photo of a car"]),
     ("event", "photo", ["a photo of a wedding", "a photo of a birthday celebration", "a photo of a concert"]),
+    ("oldphoto", "photo", ["an old low quality photo", "a blurry phone photo", "a scanned old photograph"]),
     ("logo", "picture", ["a company logo", "a brand logo on a white background", "an emblem"]),
     ("icon", "picture", ["an app icon", "a flat icon", "a pictogram"]),
     ("screenshot", "picture", ["a screenshot of a phone screen", "a screenshot of a computer screen",
@@ -49,6 +58,7 @@ LABELS = [
                                  "an anime drawing", "a 3d render"]),
     ("banner", "picture", ["an advertising banner", "a poster with text", "a sticker"]),
 ]
+HUMAN = {"person", "people", "child", "driver"}
 
 
 class ImageEncoder(torch.nn.Module):
@@ -61,7 +71,7 @@ class ImageEncoder(torch.nn.Module):
 
 
 def export_image(out_dir: str, quantize: bool) -> None:
-    vision = CLIPVisionModelWithProjection.from_pretrained(MODEL_ID).eval()
+    vision = CLIPVisionModelWithProjection.from_pretrained(MODEL_ID, use_safetensors=True).eval()
     wrapper = ImageEncoder(vision)
     dummy = torch.randn(1, 3, 224, 224)
     fp32_path = os.path.join(out_dir, "clip-image.fp32.onnx")
@@ -92,15 +102,18 @@ def export_image(out_dir: str, quantize: bool) -> None:
 @torch.no_grad()
 def export_labels(out_dir: str) -> None:
     tokenizer = CLIPTokenizer.from_pretrained(MODEL_ID)
-    text = CLIPTextModelWithProjection.from_pretrained(MODEL_ID).eval()
+    text = CLIPTextModelWithProjection.from_pretrained(MODEL_ID, use_safetensors=True).eval()
     labels = []
     for name, group, prompts in LABELS:
         tokens = tokenizer(prompts, padding=True, return_tensors="pt")
         emb = text(**tokens).text_embeds
         emb = emb / emb.norm(dim=-1, keepdim=True)
         mean = emb.mean(dim=0)
+        if not torch.isfinite(mean).all() or mean.norm() == 0:
+            raise RuntimeError(f"broken text embedding for {name!r}: re-download the model weights")
         mean = mean / mean.norm()
-        labels.append({"label": name, "group": group, "prompts": prompts, "embedding": mean.tolist()})
+        labels.append({"label": name, "group": group, "human": name in HUMAN, "prompts": prompts,
+                       "embedding": mean.tolist()})
     dim = len(labels[0]["embedding"])
     path = os.path.join(out_dir, "clip-labels.json")
     with open(path, "w", encoding="utf-8") as f:
@@ -113,9 +126,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", default=os.path.join(here, "..", "..", "models"))
     parser.add_argument("--no-quantize", action="store_true")
+    parser.add_argument("--labels-only", action="store_true", help="only regenerate clip-labels.json")
     args = parser.parse_args()
     os.makedirs(args.out, exist_ok=True)
-    export_image(args.out, not args.no_quantize)
+    if not args.labels_only:
+        export_image(args.out, not args.no_quantize)
     export_labels(args.out)
     return 0
 

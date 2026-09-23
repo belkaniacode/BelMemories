@@ -45,23 +45,22 @@ const (
 
 // Report summarises a run.
 type Report struct {
-	RunID           int64        `json:"runId"`
-	Root            string       `json:"root"`
-	Sources         []string     `json:"sources"`
-	DryRun          bool         `json:"dryRun"`
-	Started         time.Time    `json:"started"`
-	Finished        time.Time    `json:"finished"`
-	Status          string       `json:"status"`
-	Message         string       `json:"message,omitempty"`
-	Stats           Progress     `json:"stats"`
-	Renamed         []FileResult `json:"renamed"`
-	Errors          []FileResult `json:"errors"`
-	NoDate          []FileResult `json:"noDate"`
-	MtimeDates      []FileResult `json:"mtimeDates"`
-	Planned         []FileResult `json:"planned,omitempty"`
-	MissingArchives []string     `json:"missingArchives,omitempty"`
-	ReportPath      string       `json:"reportPath"`
-	CSVPath         string       `json:"csvPath"`
+	RunID      int64        `json:"runId"`
+	Root       string       `json:"root"`
+	Sources    []string     `json:"sources"`
+	DryRun     bool         `json:"dryRun"`
+	Started    time.Time    `json:"started"`
+	Finished   time.Time    `json:"finished"`
+	Status     string       `json:"status"`
+	Message    string       `json:"message,omitempty"`
+	Stats      Progress     `json:"stats"`
+	Renamed    []FileResult `json:"renamed"`
+	Errors     []FileResult `json:"errors"`
+	NoDate     []FileResult `json:"noDate"`
+	MtimeDates []FileResult `json:"mtimeDates"`
+	Planned    []FileResult `json:"planned,omitempty"`
+	ReportPath string       `json:"reportPath"`
+	CSVPath    string       `json:"csvPath"`
 }
 
 // maxListed caps per-list entries kept in memory/JSON; the CSV has all rows.

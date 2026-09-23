@@ -1,7 +1,7 @@
 // Package logging configures the application-wide structured logger.
 //
 // Logs are written as JSON to a rotating file in the user config directory
-// (<UserConfigDir>/MemoryArchive/logs/app.log). The level is controlled by the
+// (<UserConfigDir>/BelMemories/logs/app.log). The level is controlled by the
 // LOG_LEVEL environment variable (debug|info|warn|error, default info).
 package logging
 
@@ -16,11 +16,36 @@ import (
 )
 
 // AppDirName is the per-user directory name for settings and logs.
-const AppDirName = "MemoryArchive"
+const AppDirName = "BelMemories"
+
+// legacyAppDirName is the directory used before the rename to BelMemories.
+const legacyAppDirName = "MemoryArchive"
+
+// MigrateLegacyDir moves <UserConfigDir>/MemoryArchive to the current
+// directory name once, so settings and logs survive the rename. It runs
+// before logging is set up and therefore returns what happened instead of
+// logging it.
+func MigrateLegacyDir() (moved bool, err error) {
+	base, err := os.UserConfigDir()
+	if err != nil || base == "" {
+		return false, nil
+	}
+	oldDir, newDir := filepath.Join(base, legacyAppDirName), filepath.Join(base, AppDirName)
+	if _, err := os.Stat(newDir); err == nil {
+		return false, nil
+	}
+	if _, err := os.Stat(oldDir); err != nil {
+		return false, nil
+	}
+	if err := os.Rename(oldDir, newDir); err != nil {
+		return false, err
+	}
+	return true, nil
+}
 
 // Options controls logger setup.
 type Options struct {
-	// Dir overrides the log directory (defaults to <UserConfigDir>/MemoryArchive/logs).
+	// Dir overrides the log directory (defaults to <UserConfigDir>/BelMemories/logs).
 	Dir string
 	// Stderr duplicates log output to stderr (useful in dev mode).
 	Stderr bool
@@ -58,12 +83,12 @@ func Setup(opts Options) (*slog.Logger, string) {
 	return logger, logPath
 }
 
-// DefaultLogDir returns <UserConfigDir>/MemoryArchive/logs.
+// DefaultLogDir returns <UserConfigDir>/BelMemories/logs.
 func DefaultLogDir() string {
 	return filepath.Join(AppConfigDir(), "logs")
 }
 
-// AppConfigDir returns <UserConfigDir>/MemoryArchive (or a local fallback).
+// AppConfigDir returns <UserConfigDir>/BelMemories (or a local fallback).
 func AppConfigDir() string {
 	base, err := os.UserConfigDir()
 	if err != nil || base == "" {

@@ -13,7 +13,7 @@ import (
 
 	ort "github.com/yalue/onnxruntime_go"
 
-	"memoryarchive/internal/logging"
+	"belmemories/internal/logging"
 )
 
 // Model file names inside the model directory.
@@ -32,6 +32,7 @@ const (
 type Label struct {
 	Label     string    `json:"label"`
 	Group     string    `json:"group"` // "photo" | "picture"
+	Human     bool      `json:"human"` // the label describes people
 	Embedding []float32 `json:"embedding"`
 }
 
@@ -46,6 +47,7 @@ type labelsFile struct {
 type ClipResult struct {
 	Group       string  // photo | picture
 	PictureProb float64 // summed probability of picture labels
+	HumanProb   float64 // summed probability of labels with people
 	TopLabel    string
 	TopProb     float64
 }
@@ -184,6 +186,9 @@ func (c *Clip) score(emb []float32) ClipResult {
 		p := logits[i] / sum
 		if l.Group == "picture" {
 			res.PictureProb += p
+		}
+		if l.Human {
+			res.HumanProb += p
 		}
 		if p > res.TopProb {
 			res.TopProb, res.TopLabel = p, l.Label

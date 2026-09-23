@@ -14,27 +14,29 @@ import (
 	"sync"
 	"time"
 
-	"memoryarchive/internal/classify"
-	"memoryarchive/internal/fsutil"
-	"memoryarchive/internal/hashing"
-	"memoryarchive/internal/index"
-	"memoryarchive/internal/layout"
-	"memoryarchive/internal/logging"
-	"memoryarchive/internal/priority"
-	"memoryarchive/internal/scanner"
+	"belmemories/internal/classify"
+	"belmemories/internal/fsutil"
+	"belmemories/internal/hashing"
+	"belmemories/internal/index"
+	"belmemories/internal/layout"
+	"belmemories/internal/logging"
+	"belmemories/internal/priority"
+	"belmemories/internal/scanner"
 )
 
-// reserveBytes is always kept free on the destination disk.
-const reserveBytes int64 = 1 << 30
+// ReserveBytes is always kept free on the destination disk.
+const ReserveBytes int64 = 1 << 30
 
 // ErrNoSpace stops a run when the destination is (almost) full.
 var ErrNoSpace = errors.New("not enough free space on destination")
 
 // Options configure a run.
 type Options struct {
-	Profile       priority.Profile
-	Verify        bool
-	DryRun        bool
+	Profile priority.Profile
+	Verify  bool
+	DryRun  bool
+	// OtherArchives are further archive roots checked for duplicates
+	// (read-only); disconnected ones are skipped.
 	OtherArchives []string
 	// ReportDir overrides where dry-run reports go (never the destination).
 	ReportDir string
@@ -136,7 +138,7 @@ func (r *Runner) Run(ctx context.Context, plan Plan, onProgress func(Progress)) 
 		return nil, fmt.Errorf("open archive index: %w", err)
 	}
 	defer set.primary.Close()
-	set.others, rep.MissingArchives = openOthers(opts.OtherArchives, root)
+	set.others = openOthers(opts.OtherArchives, root)
 	defer set.closeOthers()
 
 	tmpDir := layout.MetaPath(root, "tmp")
@@ -150,6 +152,10 @@ func (r *Runner) Run(ctx context.Context, plan Plan, onProgress func(Progress)) 
 		if _, err := set.primary.FailStale(); err != nil {
 			log.Warn("journal cleanup failed", "err", err)
 		}
+		// Before workers start: drop records of files deleted from the
+		// archive by hand, so a new file taking such a path mid-run cannot
+		// be mistaken for the old one.
+		set.purgeStale(plan.Items)
 		rep.RunID, err = set.primary.StartRun(plan.Sources)
 		if err != nil {
 			return nil, err

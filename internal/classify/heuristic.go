@@ -10,6 +10,7 @@ import (
 	_ "image/gif"  // register decoder
 	_ "image/jpeg" // register decoder
 	_ "image/png"  // register decoder
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,10 +19,10 @@ import (
 	_ "golang.org/x/image/tiff" // register decoder
 	_ "golang.org/x/image/webp" // register decoder
 
-	"memoryarchive/internal/layout"
-	"memoryarchive/internal/logging"
-	"memoryarchive/internal/media"
-	"memoryarchive/internal/metadata"
+	"belmemories/internal/layout"
+	"belmemories/internal/logging"
+	"belmemories/internal/media"
+	"belmemories/internal/metadata"
 )
 
 // Decision is the outcome of the rule-based stage.
@@ -30,7 +31,10 @@ type Decision string
 const (
 	DecPhoto   Decision = "photo"
 	DecPicture Decision = "picture"
-	DecUnsure  Decision = "unsure"
+	// DecLikelyPicture is a picture by name/size (screenshots), but CLIP may
+	// still keep it in Фото when it clearly shows people.
+	DecLikelyPicture Decision = "likely-picture"
+	DecUnsure        Decision = "unsure"
 )
 
 // Verdict is the final classification of a file.
@@ -52,6 +56,9 @@ type ImageHeader struct {
 }
 
 // ReadHeader reads image dimensions/colour model via image.DecodeConfig.
+// HasAlpha is true only when the image really has a visible transparent area:
+// the colour model alone is not enough (Go reports opaque truecolour PNGs as
+// RGBA, and AI generators save fully opaque RGBA with alpha 254–255).
 func ReadHeader(path string) ImageHeader {
 	f, err := os.Open(path)
 	if err != nil {
@@ -62,18 +69,19 @@ func ReadHeader(path string) ImageHeader {
 	if err != nil {
 		return ImageHeader{}
 	}
-	return ImageHeader{
-		Format:   format,
-		Width:    cfg.Width,
-		Height:   cfg.Height,
-		HasAlpha: hasAlpha(cfg.ColorModel),
-		OK:       true,
+	hdr := ImageHeader{Format: format, Width: cfg.Width, Height: cfg.Height, OK: true}
+	if mayHaveAlpha(cfg.ColorModel) {
+		hdr.HasAlpha = hasTransparentArea(path, cfg.Width, cfg.Height)
 	}
+	return hdr
 }
 
-func hasAlpha(m color.Model) bool {
+// mayHaveAlpha reports whether the colour model can carry transparency.
+// RGBA/RGBA64 are premultiplied models that the decoders use for opaque
+// images, so they do not count.
+func mayHaveAlpha(m color.Model) bool {
 	switch m {
-	case color.NRGBAModel, color.NRGBA64Model, color.RGBAModel, color.RGBA64Model, color.AlphaModel, color.Alpha16Model:
+	case color.NRGBAModel, color.NRGBA64Model, color.AlphaModel, color.Alpha16Model:
 		return true
 	}
 	if p, ok := m.(color.Palette); ok {
@@ -84,6 +92,47 @@ func hasAlpha(m color.Model) bool {
 		}
 	}
 	return false
+}
+
+const (
+	// maxAlphaCheckPixels caps decoding for the transparency check (~48 MB of
+	// NRGBA per worker). Larger images skip it and are left to CLIP.
+	maxAlphaCheckPixels = 12_000_000
+	// transparentAlpha: pixels below this 16-bit alpha count as see-through.
+	transparentAlpha = 0xF000 // ≈ 240/255
+	// minTransparentShare of sampled pixels makes an image "transparent".
+	minTransparentShare = 0.01
+)
+
+// hasTransparentArea decodes the image and samples up to ~40k pixels.
+func hasTransparentArea(path string, w, h int) bool {
+	if w <= 0 || h <= 0 || w*h > maxAlphaCheckPixels {
+		return false
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	img, _, err := image.Decode(f)
+	if err != nil {
+		return false
+	}
+	b := img.Bounds()
+	step := max(1, int(math.Sqrt(float64(b.Dx()*b.Dy())/40_000)))
+	var total, clear int
+	for y := b.Min.Y; y < b.Max.Y; y += step {
+		for x := b.Min.X; x < b.Max.X; x += step {
+			total++
+			if _, _, _, a := img.At(x, y).RGBA(); a < transparentAlpha {
+				clear++
+			}
+		}
+	}
+	transparent := total > 0 && float64(clear)/float64(total) >= minTransparentShare
+	logging.Component("classify").Debug("[FIX] alpha check", "path", path,
+		"sampled", total, "transparent", clear, "result", transparent)
+	return transparent
 }
 
 var screenshotNameHints = []string{
@@ -107,7 +156,7 @@ func Heuristic(item media.Kind, path, ext string, info metadata.DateInfo, hdr Im
 	}
 	for _, hint := range screenshotNameHints {
 		if strings.Contains(lowerName, hint) {
-			return DecPicture, "screenshot file name"
+			return DecLikelyPicture, "screenshot file name"
 		}
 	}
 
@@ -125,7 +174,7 @@ func Heuristic(item media.Kind, path, ext string, info metadata.DateInfo, hdr Im
 		return DecPicture, "gif animation/graphics"
 	}
 	if ext == "png" && isScreenSize(w, h) {
-		return DecPicture, "png with screen resolution"
+		return DecLikelyPicture, "png with screen resolution"
 	}
 	if info.HasExif && info.Source == metadata.SourceExif {
 		return DecPhoto, "exif capture date"
@@ -136,7 +185,7 @@ func Heuristic(item media.Kind, path, ext string, info metadata.DateInfo, hdr Im
 // heuristicVerdict converts a rules decision into a Verdict (Unsure → Photo).
 func heuristicVerdict(dec Decision, reason string) Verdict {
 	switch dec {
-	case DecPicture:
+	case DecPicture, DecLikelyPicture:
 		return Verdict{Category: layout.CatPicture, Method: "rules", Reason: reason}
 	case DecPhoto:
 		return Verdict{Category: layout.CatPhoto, Method: "rules", Reason: reason}

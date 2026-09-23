@@ -1,38 +1,41 @@
 :root {
-  --bg: #f5f6f8;
+  --bg: #f4f5f9;
   --surface: #ffffff;
-  --surface-2: #eef0f4;
-  --border: #dcdfe6;
-  --text: #1c1f26;
-  --muted: #646b7a;
-  --accent: #2f6fe4;
+  --surface-2: #edf0f6;
+  --border: #dde1ea;
+  --text: #1a1d26;
+  --muted: #5f6677;
+  --accent: #3b6ef5;
+  --accent-2: #8b5cf6;
+  --accent-soft: #eef3ff;
   --accent-text: #ffffff;
   --ok: #1f8a4c;
   --warn: #b7791f;
   --danger: #c53030;
-  --radius: 10px;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --radius: 12px;
+  --shadow: 0 1px 2px rgba(20, 30, 60, 0.06), 0 4px 14px rgba(20, 30, 60, 0.05);
   color-scheme: light;
   font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', Ubuntu, sans-serif;
   font-size: 14px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #181a1f;
-    --surface: #22252c;
-    --surface-2: #2b2f37;
-    --border: #363b45;
-    --text: #e7e9ee;
-    --muted: #9aa1ae;
-    --accent: #5b8def;
-    --accent-text: #0e1116;
-    --ok: #48bb78;
-    --warn: #ecc94b;
-    --danger: #fc8181;
-    --shadow: none;
-    color-scheme: dark;
-  }
+/* Dark palette; the theme is always set explicitly via html[data-theme]. */
+:root[data-theme='dark'] {
+  --bg: #14161b;
+  --surface: #1d2027;
+  --surface-2: #272b34;
+  --border: #343945;
+  --text: #e8eaf0;
+  --muted: #9aa1b0;
+  --accent: #6b93ff;
+  --accent-2: #a78bfa;
+  --accent-soft: #1f2740;
+  --accent-text: #0d1017;
+  --ok: #48bb78;
+  --warn: #ecc94b;
+  --danger: #fc8181;
+  --shadow: none;
+  color-scheme: dark;
 }
 
 * {
@@ -104,6 +107,18 @@ button {
   color: var(--text);
   padding: 8px 14px;
   transition: filter 0.15s, background 0.15s;
+}
+
+/* Buttons with a line icon (components/Icon.svelte): icon and text on one axis. */
+button:has(> .icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.icon {
+  flex: none;
 }
 
 button:hover:not(:disabled) {

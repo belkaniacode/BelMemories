@@ -5,7 +5,7 @@ package drives
 import (
 	"golang.org/x/sys/windows"
 
-	"memoryarchive/internal/logging"
+	"belmemories/internal/logging"
 )
 
 // List returns all ready fixed/removable drives (A:–Z:).

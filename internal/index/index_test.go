@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"memoryarchive/internal/hashing"
-	"memoryarchive/internal/testutil"
+	"belmemories/internal/hashing"
+	"belmemories/internal/testutil"
 )
 
 func TestInsertAndLookup(t *testing.T) {

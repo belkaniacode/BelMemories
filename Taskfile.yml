@@ -39,8 +39,19 @@ tasks:
     cmds:
       - python export.py
 
+  icons:
+    desc: Regenerate all app icons from a master PNG (task icons -- path/to/icon.png)
+    cmds:
+      - python tools/make-icons.py {{.CLI_ARGS}}
+
+  install:linux:
+    desc: Register the built app in the desktop menu with its icon (~/.local/share)
+    deps: [build:linux]
+    cmds:
+      - scripts/install-linux.sh build/bin/BelMemories
+
   build:linux:
-    desc: Build Linux amd64 binary into build/bin/MemoryArchive
+    desc: Build Linux amd64 binary into build/bin/BelMemories
     cmds:
       - wails build -clean -platform linux/amd64 -tags "{{.WEBKIT_TAGS}}" -ldflags "{{.LDFLAGS}}"
 
@@ -54,21 +65,23 @@ tasks:
       - wails build -platform windows/amd64 -ldflags "{{.LDFLAGS}}"
 
   package:linux:
-    desc: Build and assemble dist/MemoryArchive-linux (+ zip) with model and onnxruntime
+    desc: Build and assemble dist/BelMemories-linux (+ zip) with model and onnxruntime
     deps: [build:linux]
     cmds:
-      - rm -rf dist/MemoryArchive-linux && mkdir -p dist/MemoryArchive-linux/models
-      - cp build/bin/MemoryArchive dist/MemoryArchive-linux/
-      - cp models/clip-image.onnx models/clip-labels.json dist/MemoryArchive-linux/models/ || echo "WARN no CLIP model — rules-only build"
-      - cp models/lib/linux/libonnxruntime.so dist/MemoryArchive-linux/ || echo "WARN no onnxruntime — rules-only build"
-      - cd dist && rm -f MemoryArchive-linux.zip && zip -qr MemoryArchive-linux.zip MemoryArchive-linux
+      - rm -rf dist/BelMemories-linux && mkdir -p dist/BelMemories-linux/models
+      - cp build/bin/BelMemories dist/BelMemories-linux/
+      - cp -r build/linux dist/BelMemories-linux/linux
+      - cp scripts/install-linux.sh dist/BelMemories-linux/
+      - cp models/clip-image.onnx models/clip-labels.json dist/BelMemories-linux/models/ || echo "WARN no CLIP model — rules-only build"
+      - cp models/lib/linux/libonnxruntime.so dist/BelMemories-linux/ || echo "WARN no onnxruntime — rules-only build"
+      - cd dist && rm -f BelMemories-linux.zip && zip -qr BelMemories-linux.zip BelMemories-linux
 
   package:windows:
-    desc: Build and assemble dist/MemoryArchive-windows (+ zip) with model and onnxruntime.dll
+    desc: Build and assemble dist/BelMemories-windows (+ zip) with model and onnxruntime.dll
     deps: [build:windows]
     cmds:
-      - rm -rf dist/MemoryArchive-windows && mkdir -p dist/MemoryArchive-windows/models
-      - cp build/bin/MemoryArchive.exe dist/MemoryArchive-windows/
-      - cp models/clip-image.onnx models/clip-labels.json dist/MemoryArchive-windows/models/ || echo "WARN no CLIP model — rules-only build"
-      - cp models/lib/windows/onnxruntime.dll dist/MemoryArchive-windows/ || echo "WARN no onnxruntime.dll — rules-only build"
-      - cd dist && rm -f MemoryArchive-windows.zip && zip -qr MemoryArchive-windows.zip MemoryArchive-windows
+      - rm -rf dist/BelMemories-windows && mkdir -p dist/BelMemories-windows/models
+      - cp build/bin/BelMemories.exe dist/BelMemories-windows/
+      - cp models/clip-image.onnx models/clip-labels.json dist/BelMemories-windows/models/ || echo "WARN no CLIP model — rules-only build"
+      - cp models/lib/windows/onnxruntime.dll dist/BelMemories-windows/ || echo "WARN no onnxruntime.dll — rules-only build"
+      - cd dist && rm -f BelMemories-windows.zip && zip -qr BelMemories-windows.zip BelMemories-windows

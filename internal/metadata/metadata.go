@@ -8,9 +8,9 @@ package metadata
 import (
 	"time"
 
-	"memoryarchive/internal/logging"
-	"memoryarchive/internal/media"
-	"memoryarchive/internal/scanner"
+	"belmemories/internal/logging"
+	"belmemories/internal/media"
+	"belmemories/internal/scanner"
 )
 
 // Source describes where the date came from.

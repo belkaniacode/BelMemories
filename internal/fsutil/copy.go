@@ -22,8 +22,8 @@ import (
 
 	"golang.org/x/time/rate"
 
-	"memoryarchive/internal/hashing"
-	"memoryarchive/internal/logging"
+	"belmemories/internal/hashing"
+	"belmemories/internal/logging"
 )
 
 var (

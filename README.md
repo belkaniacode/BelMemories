@@ -1,63 +1,74 @@
-# MemoryArchive
+# BelMemories
 
-> Один аккуратный архив фото и видео по годам — со всех дисков, без дублей и без риска для данных.
+**English** · [Русский](README.ru.md)
 
-Настольная программа для Linux и Windows. Сканирует диски и папки (в том числе копии с телефонов), находит только фото и видео и раскладывает их на архивный диск по годам. Логотипы, скриншоты и мемы отправляет в отдельную папку «Картинки».
+> One tidy photo and video archive, sorted by year — gathered from all your drives, without duplicates and without putting your data at risk.
 
-## Быстрый старт
+A desktop app for Linux and Windows. It scans drives and folders (including phone backups), picks out only photos and videos, and files them onto an archive drive by year. Logos, screenshots and memes go to a separate "pictures" folder.
 
-- **Windows 10/11**: распакуйте архив с программой и запустите `MemoryArchive.exe`.
+## Quick start
+
+- **Windows 10/11**: unpack the release archive and run `BelMemories.exe`.
 - **Arch Linux**:
 
 ```bash
 sudo pacman -S --needed webkit2gtk-4.1
-./MemoryArchive
+./BelMemories
+./install-linux.sh ./BelMemories   # optional: menu entry and taskbar icon
 ```
 
-Сборка из исходников описана в [docs/build.md](docs/build.md).
+To build from source, see [docs/build.md](docs/build.md).
 
-## Возможности
+## Features
 
-- **Только фото и видео**: JPEG, PNG, HEIC, WebP, RAW, MP4, MOV, AVI, MKV и другие; остальные файлы пропускаются.
-- **Год по дате съёмки**: EXIF → метаданные видео → имя файла (`IMG_20190512_…`, WhatsApp, Telegram) → дата изменения.
-- **Без дублей**: проверка по содержимому (хэш BLAKE3). Совпало имя, но файл другой — сохраняется как `имя_1.jpg`.
-- **Фото или картинка**: правила + нейросеть CLIP, работает офлайн.
-- **Не тормозит компьютер**: низкий приоритет, три уровня нагрузки, пауза.
-- **Безопасно для архива**: файлы не перезаписываются, каждый проверяется после записи, сбой не портит архив.
+- **Photos and videos only**: JPEG, PNG, HEIC, WebP, RAW, MP4, MOV, AVI, MKV and more; everything else is skipped.
+- **Year from the capture date**: EXIF → video metadata → file name (`IMG_20190512_…`, WhatsApp, Telegram) → modification time.
+- **No duplicates**: files are compared by content (BLAKE3 hash), also against every archive the app has written to before, as long as its drive is connected. Same name but different content is saved as `name_1.jpg`. A file you deleted from the archive by hand is copied again on the next run.
+- **Photo or picture**: rules plus the CLIP neural network, fully offline. Shots with people stay in photos even if they look like a screenshot or a repost.
+- **Stays out of your way**: low priority, three load levels, pause.
+- **Safe for the archive**: existing files are never overwritten, every copy is verified, and a crash cannot corrupt the archive.
+- **English and Russian UI**: the language follows the operating system.
+- **Light and dark theme**: taken from the OS on first start, then switched with a button. Includes a built-in help page and an About dialog.
 
-## Как это выглядит
+## Archive layout
 
 ```
-<Диск архива>/
-├── Фото/2019/…        люди, животные, природа, быт
-├── Видео/2019/…
-├── Картинки/2021/…    логотипы, иконки, скриншоты, мемы, документы
-├── Без даты/{Фото,Видео,Картинки}/…
-└── .memoryarchive/    индекс, журнал, отчёты (служебная папка)
+<Archive drive>/
+├── Фото/2019/…        Photos: people, animals, nature, everyday life
+├── Видео/2019/…       Videos
+├── Картинки/2021/…    Pictures: logos, icons, screenshots, memes, documents
+├── Без даты/{Фото,Видео,Картинки}/…   No date
+└── .memoryarchive/    index, journal, reports (internal folder)
 ```
 
-Порядок работы в программе:
+For now the archive folder names are always in Russian, whatever the UI language.
 
-1. **Источник**: выберите диски или папки, можно несколько, и нажмите «Сканировать».
-2. **Сканирование**: программа покажет, сколько найдено фото и видео и сколько места они занимают.
-3. **Назначение**: выберите архивный диск и уровень нагрузки. При желании включите пробный запуск, тогда ничего не копируется.
-4. **Архивация**: на экране прогресс, скорость и оставшееся время. Есть пауза и остановка.
-5. **Отчёт**: сколько скопировано, сколько дублей, какие файлы переименованы, какие остались без даты. Полный список сохраняется в CSV.
+## How it works
 
-## Безопасность данных
+1. **Source**: pick one or more drives or folders and click Scan. The last three sources are offered for quick selection.
+2. **Scan**: the app shows how many photos and videos it found and how much space they take.
+3. **Destination**: choose the archive drive and the load level. The app shows free space, how many files and bytes will be copied, and how many files are already in the folder. Optionally enable a dry run: nothing is copied, and the plan screen offers an "Archive now" button to carry out that plan right away.
+4. **Archiving**: progress, speed and time remaining. You can pause or stop.
+5. **Report**: files copied, duplicates skipped, files renamed, files without a date. The full list is saved as CSV. "New archive" starts over from scratch.
 
-- Источник **только читается**: программа ничего в нём не меняет и не удаляет.
-- Существующие файлы архива **никогда не перезаписываются**.
-- Каждый файл пишется во временный `.part`, сбрасывается на диск, сверяется по хэшу и только после этого появляется в архиве.
-- При нехватке места или ошибке диска запуск сразу останавливается.
-- После сбоя запуск можно просто повторить: уже скопированное не задублируется.
+## Data safety
+
+- Sources are **read-only**: nothing in them is changed or deleted.
+- Existing archive files are **never overwritten**.
+- Each file is written to a temporary `.part` file, flushed to disk and checked against its hash before it appears in the archive.
+- At least 1 GiB is always kept free on the archive drive. If space runs out or the disk reports an error, the run stops immediately.
+- After a failure, just run it again: files already copied will not be duplicated.
 
 ---
 
-## Документация
+## Documentation
 
-| Документ | Содержание |
+| Document | Contents |
 |---|---|
-| [Настройки и файлы](docs/configuration.md) | Параметры, уровни нагрузки, где лежат логи, индекс и отчёты |
-| [Сборка](docs/build.md) | Сборка под Linux и Windows, подготовка модели CLIP, тесты |
-| [Архитектура](docs/architecture.md) | Пакеты, конвейер, безопасная запись, индекс, классификация |
+| [Configuration and files](docs/configuration.md) | Settings, theme and language, load levels, where logs, the index and reports live |
+| [Building](docs/build.md) | Building for Linux and Windows, icons and desktop integration, the CLIP model, tests |
+| [Architecture](docs/architecture.md) | Packages, pipeline, safe writes, index, cross-archive duplicates, classification |
+
+## Author
+
+Belkania Z. · [belteosystems@gmail.com](mailto:belteosystems@gmail.com)

@@ -23,3 +23,16 @@ export const classifier = writable<ClassifierStatus | null>(null)
 
 /** Global toast-like error line. */
 export const errorMessage = writable<string>('')
+
+/** Parameters of the last archive run (lets the plan screen start the real run). */
+export interface ArchiveRequest {
+  root: string
+  dryRun: boolean
+  verify: boolean
+  load: string
+}
+export const lastRequest = writable<ArchiveRequest | null>(null)
+
+/** Colour scheme shown in the UI. The "auto" setting is resolved to one of these at startup. */
+export type Theme = 'light' | 'dark'
+export const theme = writable<Theme>('light')

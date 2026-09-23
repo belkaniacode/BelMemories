@@ -9,7 +9,7 @@ import (
 
 	"github.com/h2non/filetype"
 
-	"memoryarchive/internal/logging"
+	"belmemories/internal/logging"
 )
 
 // Kind is the media kind of a file.

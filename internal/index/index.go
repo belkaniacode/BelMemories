@@ -15,9 +15,9 @@ import (
 
 	_ "modernc.org/sqlite" // pure-Go SQLite driver
 
-	"memoryarchive/internal/hashing"
-	"memoryarchive/internal/layout"
-	"memoryarchive/internal/logging"
+	"belmemories/internal/hashing"
+	"belmemories/internal/layout"
+	"belmemories/internal/logging"
 )
 
 // Journal states.
@@ -123,6 +123,9 @@ func (d *DB) Close() error {
 // Root returns the archive root.
 func (d *DB) Root() string { return d.root }
 
+// ReadOnly reports whether the index was opened read-only.
+func (d *DB) ReadOnly() bool { return d.readOnly }
+
 // HasSize reports whether any archived file has exactly this size.
 func (d *DB) HasSize(size int64) (bool, error) {
 	var one int
@@ -151,6 +154,24 @@ func (d *DB) LookupHash(sum hashing.Sum) (string, bool, error) {
 	return rel, true, nil
 }
 
+// PathsWithSize returns archive-relative paths of catalogued files of this size.
+func (d *DB) PathsWithSize(size int64) ([]string, error) {
+	rows, err := d.db.Query(`SELECT rel_path FROM files WHERE size = ?`, size)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var rel string
+		if err := rows.Scan(&rel); err != nil {
+			return nil, err
+		}
+		out = append(out, rel)
+	}
+	return out, rows.Err()
+}
+
 // RelPathExists reports whether a relative path is already catalogued.
 func (d *DB) RelPathExists(rel string) (bool, error) {
 	var one int
@@ -162,7 +183,9 @@ func (d *DB) RelPathExists(rel string) (bool, error) {
 }
 
 // InsertBatch stores records in one transaction. Records whose hash already
-// exists are ignored.
+// exists are ignored. A record owns its rel_path: the file was just written
+// there, so a stale record of another hash at the same path (the old file was
+// deleted by hand) is replaced instead of silently blocking the insert.
 func (d *DB) InsertBatch(recs []FileRecord) error {
 	if len(recs) == 0 {
 		return nil
@@ -179,12 +202,25 @@ func (d *DB) InsertBatch(recs []FileRecord) error {
 		return fmt.Errorf("prepare insert: %w", err)
 	}
 	defer stmt.Close()
+	evict, err := tx.Prepare(`DELETE FROM files WHERE rel_path = ? AND hash != ?`)
+	if err != nil {
+		tx.Rollback()
+		return fmt.Errorf("prepare evict: %w", err)
+	}
+	defer evict.Close()
 	for _, r := range recs {
+		rel := filepath.ToSlash(r.RelPath)
+		if res, err := evict.Exec(rel, r.Hash[:]); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("evict %s: %w", rel, err)
+		} else if n, _ := res.RowsAffected(); n > 0 {
+			d.log.Info("[FIX] stale record replaced at reused path", "rel", rel)
+		}
 		added := r.AddedAt
 		if added.IsZero() {
 			added = time.Now()
 		}
-		if _, err := stmt.Exec(r.Hash[:], r.Size, filepath.ToSlash(r.RelPath), r.Kind, r.Category,
+		if _, err := stmt.Exec(r.Hash[:], r.Size, rel, r.Kind, r.Category,
 			r.Year, r.DateSource, r.OrigName, added.Unix()); err != nil {
 			tx.Rollback()
 			d.log.Error("insert failed", "rel", r.RelPath, "err", err)
@@ -197,6 +233,14 @@ func (d *DB) InsertBatch(recs []FileRecord) error {
 	}
 	d.log.Debug("batch inserted", "count", len(recs))
 	return nil
+}
+
+// DeleteStale removes the record of hash at rel (its file is gone). Both keys
+// must match, so a record inserted meanwhile for another file at the same
+// path is never removed.
+func (d *DB) DeleteStale(sum hashing.Sum, rel string) error {
+	_, err := d.db.Exec(`DELETE FROM files WHERE hash = ? AND rel_path = ?`, sum[:], filepath.ToSlash(rel))
+	return err
 }
 
 // DeleteByRelPath removes a record (used when a catalogued file is gone).

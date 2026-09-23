@@ -6,7 +6,7 @@ import (
 
 	"github.com/evanoberholster/imagemeta"
 
-	"memoryarchive/internal/logging"
+	"belmemories/internal/logging"
 )
 
 // Formats imagemeta can read EXIF from.

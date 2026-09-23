@@ -14,7 +14,7 @@ import (
 	"github.com/zeebo/blake3"
 	"golang.org/x/time/rate"
 
-	"memoryarchive/internal/logging"
+	"belmemories/internal/logging"
 )
 
 // Size is the digest length in bytes.

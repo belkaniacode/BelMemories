@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"memoryarchive/internal/logging"
+	"belmemories/internal/logging"
 )
 
 // LoadLevel is a user-selectable resource usage level.
@@ -33,9 +33,31 @@ type Settings struct {
 	ModelDir string `json:"modelDir"`
 	// ClipThreshold is the minimal group probability to trust CLIP.
 	ClipThreshold float64 `json:"clipThreshold"`
-	// OtherArchives lists other archive roots used for cross-disk dedup.
-	OtherArchives []string `json:"otherArchives"`
+	// KnownArchives are archive roots this app has written to (newest first).
+	// Every run checks the connected ones for duplicates, so a file already
+	// archived on another disk is not copied again. Filled automatically.
+	KnownArchives []string `json:"knownArchives"`
+	// OtherArchives is the former manual list; merged into KnownArchives on load.
+	OtherArchives []string `json:"otherArchives,omitempty"`
+	// Theme is the UI colour scheme: light or dark. "auto" (not chosen yet)
+	// means the OS scheme is detected once at startup.
+	Theme Theme `json:"theme"`
 }
+
+// MaxKnownArchives caps the remembered archive roots.
+const MaxKnownArchives = 50
+
+// MaxRecentSources is how many recent source folders are remembered.
+const MaxRecentSources = 3
+
+// Theme is a UI colour scheme.
+type Theme string
+
+const (
+	ThemeAuto  Theme = "auto"
+	ThemeLight Theme = "light"
+	ThemeDark  Theme = "dark"
+)
 
 // Defaults returns default settings.
 func Defaults() Settings {
@@ -43,6 +65,7 @@ func Defaults() Settings {
 		Load:            LoadMedium,
 		VerifyAfterCopy: true,
 		ClipThreshold:   0.5,
+		Theme:           ThemeAuto,
 	}
 }
 
@@ -125,7 +148,50 @@ func (st *Settings) normalize() {
 	if st.ClipThreshold <= 0 || st.ClipThreshold >= 1 {
 		st.ClipThreshold = 0.5
 	}
-	if len(st.RecentSources) > 20 {
-		st.RecentSources = st.RecentSources[:20]
+	switch st.Theme {
+	case ThemeAuto, ThemeLight, ThemeDark:
+	default:
+		st.Theme = ThemeAuto
 	}
+	for _, r := range st.OtherArchives {
+		st.addKnown(r, false)
+	}
+	st.OtherArchives = nil
+	// Archives written before KnownArchives existed: the last destination.
+	st.addKnown(st.LastDestination, false)
+	if len(st.KnownArchives) > MaxKnownArchives {
+		st.KnownArchives = st.KnownArchives[:MaxKnownArchives]
+	}
+	if len(st.RecentSources) > MaxRecentSources {
+		st.RecentSources = st.RecentSources[:MaxRecentSources]
+	}
+}
+
+// RememberArchive records root as a known archive, moving it to the front.
+func (st *Settings) RememberArchive(root string) { st.addKnown(root, true) }
+
+func (st *Settings) addKnown(root string, front bool) {
+	if root == "" {
+		return
+	}
+	root = filepath.Clean(root)
+	out := make([]string, 0, len(st.KnownArchives)+1)
+	for _, k := range st.KnownArchives {
+		if k == root {
+			if !front {
+				return
+			}
+			continue
+		}
+		out = append(out, k)
+	}
+	if front {
+		out = append([]string{root}, out...)
+	} else {
+		out = append(out, root)
+	}
+	if len(out) > MaxKnownArchives {
+		out = out[:MaxKnownArchives]
+	}
+	st.KnownArchives = out
 }

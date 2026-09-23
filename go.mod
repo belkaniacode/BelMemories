@@ -1,4 +1,4 @@
-module memoryarchive
+module belmemories
 
 go 1.25.0
 

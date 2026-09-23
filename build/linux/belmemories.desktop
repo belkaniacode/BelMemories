@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=BelMemories
+Comment=Архив фото и видео по годам
+Comment[en]=Photo and video archiver
+Exec=@EXEC@
+Icon=belmemories
+Terminal=false
+Categories=Graphics;Photography;
+StartupWMClass=belmemories
+StartupNotify=true

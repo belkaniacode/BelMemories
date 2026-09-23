@@ -18,8 +18,16 @@ export function ConfirmClose() {
   return window['go']['main']['App']['ConfirmClose']();
 }
 
+export function GetAppInfo() {
+  return window['go']['main']['App']['GetAppInfo']();
+}
+
 export function GetDestinationInfo(arg1) {
   return window['go']['main']['App']['GetDestinationInfo'](arg1);
+}
+
+export function GetLanguage() {
+  return window['go']['main']['App']['GetLanguage']();
 }
 
 export function GetSettings() {
@@ -36,6 +44,10 @@ export function LogFrontendError(arg1) {
 
 export function OpenPath(arg1) {
   return window['go']['main']['App']['OpenPath'](arg1);
+}
+
+export function OpenURL(arg1) {
+  return window['go']['main']['App']['OpenURL'](arg1);
 }
 
 export function PauseArchive() {
@@ -64,4 +76,8 @@ export function StartArchive(arg1) {
 
 export function StartScan(arg1) {
   return window['go']['main']['App']['StartScan'](arg1);
+}
+
+export function SystemTheme() {
+  return window['go']['main']['App']['SystemTheme']();
 }

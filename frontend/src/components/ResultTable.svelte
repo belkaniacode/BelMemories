@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { FileResult } from '../lib/api'
+  import { tr } from '../lib/i18n'
 
   let { rows, mode = 'dst' }: { rows: FileResult[]; mode?: 'dst' | 'err' | 'date' } = $props()
 
@@ -9,15 +10,15 @@
 </script>
 
 {#if rows.length === 0}
-  <p class="muted">Нет записей</p>
+  <p class="muted">{tr('Нет записей', 'No entries')}</p>
 {:else}
   <div class="wrap">
     <table>
       <thead>
         <tr>
-          <th>Исходный файл</th>
-          {#if mode === 'err'}<th>Ошибка</th>{:else}<th>В архиве</th>{/if}
-          {#if mode === 'date'}<th>Год</th>{/if}
+          <th>{tr('Исходный файл', 'Source file')}</th>
+          {#if mode === 'err'}<th>{tr('Ошибка', 'Error')}</th>{:else}<th>{tr('В архиве', 'In archive')}</th>{/if}
+          {#if mode === 'date'}<th>{tr('Год', 'Year')}</th>{/if}
         </tr>
       </thead>
       <tbody>
@@ -36,7 +37,7 @@
     </table>
   </div>
   {#if rows.length > shown}
-    <button class="link" onclick={() => (shown += PAGE)}>Показать ещё ({rows.length - shown})</button>
+    <button class="link" onclick={() => (shown += PAGE)}>{tr('Показать ещё', 'Show more')} ({rows.length - shown})</button>
   {/if}
 {/if}
 

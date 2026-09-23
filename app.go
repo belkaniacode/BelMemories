@@ -8,20 +8,23 @@ import (
 	"os/exec"
 	"path/filepath"
 	goruntime "runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"memoryarchive/internal/archiver"
-	"memoryarchive/internal/classify"
-	"memoryarchive/internal/config"
-	"memoryarchive/internal/drives"
-	"memoryarchive/internal/index"
-	"memoryarchive/internal/logging"
-	"memoryarchive/internal/priority"
-	"memoryarchive/internal/scanner"
+	"belmemories/internal/archiver"
+	"belmemories/internal/classify"
+	"belmemories/internal/config"
+	"belmemories/internal/drives"
+	"belmemories/internal/i18n"
+	"belmemories/internal/index"
+	"belmemories/internal/logging"
+	"belmemories/internal/priority"
+	"belmemories/internal/scanner"
+	"belmemories/internal/systheme"
 )
 
 // Event names shared with the frontend.
@@ -141,7 +144,57 @@ func (a *App) getClassifier() *classify.Classifier {
 	return a.classifier
 }
 
+// ---- About ----
+
+// Product facts shown in the "О программе" dialog.
+const (
+	appName    = "BelMemories"
+	appAuthor  = "Belkania Z."
+	appEmail   = "belteosystems@gmail.com"
+	appRepoURL = "https://github.com/belkaniacode/BelMemories"
+)
+
+// AppInfo describes the program for the help/about screen.
+type AppInfo struct {
+	Name       string          `json:"name"`
+	Version    string          `json:"version"`
+	Author     string          `json:"author"`
+	Email      string          `json:"email"`
+	RepoURL    string          `json:"repoUrl"`
+	OS         string          `json:"os"`
+	Arch       string          `json:"arch"`
+	ConfigDir  string          `json:"configDir"`
+	LogPath    string          `json:"logPath"`
+	Classifier classify.Status `json:"classifier"`
+}
+
+// GetAppInfo returns program, author and environment facts.
+func (a *App) GetAppInfo() AppInfo {
+	return AppInfo{
+		Name: appName, Version: version, Author: appAuthor, Email: appEmail, RepoURL: appRepoURL,
+		OS: goruntime.GOOS, Arch: goruntime.GOARCH,
+		ConfigDir: logging.AppConfigDir(), LogPath: a.logPath,
+		Classifier: a.getClassifier().Status(),
+	}
+}
+
+// OpenURL opens a web or mailto link in the default browser/mail client.
+func (a *App) OpenURL(url string) {
+	if !strings.HasPrefix(url, "https://") && !strings.HasPrefix(url, "mailto:") {
+		a.log.Warn("OpenURL: rejected url", "url", url)
+		return
+	}
+	runtime.BrowserOpenURL(a.ctx, url)
+}
+
+// GetLanguage returns the UI language ("ru" or "en") detected from the OS.
+func (a *App) GetLanguage() string { return string(i18n.Current()) }
+
 // ---- Settings ----
+
+// SystemTheme returns the OS colour scheme ("light" or "dark"). The UI uses it
+// once at startup while the theme setting is still "auto".
+func (a *App) SystemTheme() string { return systheme.Detect() }
 
 // GetSettings returns persisted settings.
 func (a *App) GetSettings() config.Settings { return a.settings.Load() }
@@ -196,16 +249,16 @@ type ScanSummary struct {
 // StartScan scans roots in the background (events scan:progress/scan:done).
 func (a *App) StartScan(roots []string) error {
 	if len(roots) == 0 {
-		return errors.New("не выбрано ни одного источника")
+		return errors.New(i18n.Pick("не выбрано ни одного источника", "no source selected"))
 	}
 	a.mu.Lock()
 	if a.scanCancel != nil {
 		a.mu.Unlock()
-		return errors.New("сканирование уже идёт")
+		return errors.New(i18n.Pick("сканирование уже идёт", "a scan is already running"))
 	}
 	if a.archiveCancel != nil {
 		a.mu.Unlock()
-		return errors.New("идёт архивация")
+		return errors.New(i18n.Pick("идёт архивация", "archiving is in progress"))
 	}
 	ctx, cancel := context.WithCancel(a.ctx)
 	a.scanCancel = cancel
@@ -253,7 +306,11 @@ func (a *App) CancelScan() {
 // DestinationInfo extends archive info with the estimate for the last scan.
 type DestinationInfo struct {
 	archiver.ArchiveInfo
-	NeededBytes  int64 `json:"neededBytes"`
+	// NeededBytes/NeededFiles: scanned files not yet in the archive (no reserve).
+	NeededBytes int64 `json:"neededBytes"`
+	NeededFiles int   `json:"neededFiles"`
+	// ReserveBytes is kept free on the disk; Enough accounts for it.
+	ReserveBytes int64 `json:"reserveBytes"`
 	Enough       bool  `json:"enough"`
 	InsideSource bool  `json:"insideSource"`
 }
@@ -266,8 +323,9 @@ func (a *App) GetDestinationInfo(root string) DestinationInfo {
 	a.mu.Unlock()
 	if scan != nil && info.Exists {
 		items := filterOutside(scan.Items, root)
-		info.NeededBytes = archiver.EstimateNeeded(root, items)
-		info.Enough = uint64(info.NeededBytes) <= info.FreeBytes
+		info.NeededBytes, info.NeededFiles = archiver.EstimateNeeded(root, items)
+		info.ReserveBytes = archiver.ReserveBytes
+		info.Enough = uint64(info.NeededBytes+archiver.ReserveBytes) <= info.FreeBytes
 		for _, r := range roots {
 			if isInside(r, root) {
 				info.InsideSource = true
@@ -290,15 +348,15 @@ func (a *App) StartArchive(req ArchiveRequest) error {
 	a.mu.Lock()
 	if a.archiveCancel != nil {
 		a.mu.Unlock()
-		return errors.New("архивация уже идёт")
+		return errors.New(i18n.Pick("архивация уже идёт", "archiving is already running"))
 	}
 	if a.scan == nil || len(a.scan.Items) == 0 {
 		a.mu.Unlock()
-		return errors.New("сначала выполните сканирование")
+		return errors.New(i18n.Pick("сначала выполните сканирование", "run a scan first"))
 	}
 	if req.Root == "" {
 		a.mu.Unlock()
-		return errors.New("не выбрана папка назначения")
+		return errors.New(i18n.Pick("не выбрана папка назначения", "no destination folder selected"))
 	}
 	items := filterOutside(a.scan.Items, req.Root)
 	sources := append([]string(nil), a.scanRoots...)
@@ -309,7 +367,12 @@ func (a *App) StartArchive(req ArchiveRequest) error {
 
 	st := a.settings.Load()
 	st.LastDestination, st.Load, st.VerifyAfterCopy = req.Root, req.Load, req.Verify
+	if !req.DryRun {
+		st.RememberArchive(req.Root)
+	}
 	_ = a.settings.Save(st)
+	others := dedupArchives(st.KnownArchives)
+	a.log.Info("[FIX] dedup against other archives", "candidates", others)
 
 	prof := priority.ProfileFor(req.Load, st.BytesPerSecLimit)
 	a.log.Info("StartArchive", "root", req.Root, "files", len(items), "dryRun", req.DryRun, "load", req.Load)
@@ -329,7 +392,7 @@ func (a *App) StartArchive(req ArchiveRequest) error {
 
 		rep, err := runner.Run(ctx, archiver.Plan{
 			Items: items, Sources: sources, ArchiveRoot: req.Root,
-			Options: archiver.Options{Profile: prof, Verify: req.Verify, DryRun: req.DryRun, OtherArchives: st.OtherArchives},
+			Options: archiver.Options{Profile: prof, Verify: req.Verify, DryRun: req.DryRun, OtherArchives: others},
 		}, func(p archiver.Progress) { runtime.EventsEmit(a.ctx, evArchiveProgress, p) })
 		if err != nil {
 			a.log.Error("archive failed", "err", err)
@@ -401,7 +464,7 @@ func (a *App) OpenPath(path string) error {
 	}
 	if err := cmd.Start(); err != nil {
 		a.log.Error("open path failed", "path", path, "err", err)
-		return fmt.Errorf("не удалось открыть %s: %w", path, err)
+		return fmt.Errorf(i18n.Pick("не удалось открыть %s: %w", "cannot open %s: %w"), path, err)
 	}
 	go cmd.Wait()
 	return nil
@@ -428,8 +491,21 @@ func mergeRecent(add, old []string) []string {
 			out = append(out, o)
 		}
 	}
-	if len(out) > 20 {
-		out = out[:20]
+	if len(out) > config.MaxRecentSources {
+		out = out[:config.MaxRecentSources]
+	}
+	return out
+}
+
+// dedupArchives lists archive roots to check for duplicates besides the
+// destination: every archive written before plus any archive found at the root
+// of a connected drive. Disconnected ones are skipped later by the archiver.
+func dedupArchives(known []string) []string {
+	out := append([]string(nil), known...)
+	for _, d := range drives.List() {
+		if index.Exists(d.Path) && !slices.Contains(out, d.Path) {
+			out = append(out, d.Path)
+		}
 	}
 	return out
 }

@@ -31,7 +31,9 @@ export namespace config {
 	    bytesPerSecLimit: number;
 	    modelDir: string;
 	    clipThreshold: number;
-	    otherArchives: string[];
+	    knownArchives: string[];
+	    otherArchives?: string[];
+	    theme: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Settings(source);
@@ -46,7 +48,9 @@ export namespace config {
 	        this.bytesPerSecLimit = source["bytesPerSecLimit"];
 	        this.modelDir = source["modelDir"];
 	        this.clipThreshold = source["clipThreshold"];
+	        this.knownArchives = source["knownArchives"];
 	        this.otherArchives = source["otherArchives"];
+	        this.theme = source["theme"];
 	    }
 	}
 
@@ -79,6 +83,54 @@ export namespace drives {
 
 export namespace main {
 	
+	export class AppInfo {
+	    name: string;
+	    version: string;
+	    author: string;
+	    email: string;
+	    repoUrl: string;
+	    os: string;
+	    arch: string;
+	    configDir: string;
+	    logPath: string;
+	    classifier: classify.Status;
+	
+	    static createFrom(source: any = {}) {
+	        return new AppInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.version = source["version"];
+	        this.author = source["author"];
+	        this.email = source["email"];
+	        this.repoUrl = source["repoUrl"];
+	        this.os = source["os"];
+	        this.arch = source["arch"];
+	        this.configDir = source["configDir"];
+	        this.logPath = source["logPath"];
+	        this.classifier = this.convertValues(source["classifier"], classify.Status);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ArchiveRequest {
 	    root: string;
 	    dryRun: boolean;
@@ -107,6 +159,8 @@ export namespace main {
 	    needsReindex: boolean;
 	    error?: string;
 	    neededBytes: number;
+	    neededFiles: number;
+	    reserveBytes: number;
 	    enough: boolean;
 	    insideSource: boolean;
 	
@@ -124,6 +178,8 @@ export namespace main {
 	        this.needsReindex = source["needsReindex"];
 	        this.error = source["error"];
 	        this.neededBytes = source["neededBytes"];
+	        this.neededFiles = source["neededFiles"];
+	        this.reserveBytes = source["reserveBytes"];
 	        this.enough = source["enough"];
 	        this.insideSource = source["insideSource"];
 	    }

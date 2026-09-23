@@ -5,8 +5,8 @@ package priority
 import (
 	"runtime"
 
-	"memoryarchive/internal/config"
-	"memoryarchive/internal/logging"
+	"belmemories/internal/config"
+	"belmemories/internal/logging"
 )
 
 // Profile holds concurrency and bandwidth limits for a load level.
