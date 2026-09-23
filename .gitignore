@@ -1,0 +1,25 @@
+# Build output
+build/bin/
+dist/
+frontend/dist/*
+!frontend/dist/.gitkeep
+
+# Dependencies
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+
+# Large generated files (see docs/build.md: task models:export / models:fetch)
+models/*
+!models/.gitkeep
+
+# Tooling / local state
+.task/
+*.log
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+frontend/package.json.md5

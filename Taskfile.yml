@@ -1,0 +1,74 @@
+version: "3"
+
+vars:
+  VERSION:
+    sh: git describe --tags --always 2>/dev/null || date +%Y.%m.%d
+  LDFLAGS: -X main.version={{.VERSION}}
+  # WebKitGTK API used on Linux: "" for webkit2gtk-4.0, "webkit2_41" for webkit2gtk-4.1
+  WEBKIT_TAGS: '{{.WEBKIT_TAGS | default "webkit2_41"}}'
+
+env:
+  GOTOOLCHAIN: local
+
+tasks:
+  dev:
+    desc: Run the app in Wails dev mode (hot reload)
+    cmds:
+      - wails dev -tags "{{.WEBKIT_TAGS}}"
+
+  test:
+    desc: Run Go unit and integration tests
+    cmds:
+      - go test -race ./internal/...
+
+  lint:
+    desc: Static checks (Go vet for Linux and Windows, Svelte type check)
+    cmds:
+      - go vet ./...
+      - GOOS=windows CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go vet ./internal/... || echo "skip windows vet (no mingw)"
+      - cd frontend && npx svelte-check --tsconfig ./tsconfig.json
+
+  models:fetch:
+    desc: Download ONNX Runtime libraries (Linux + Windows) into models/lib
+    cmds:
+      - bash scripts/fetch-onnxruntime.sh all
+
+  models:export:
+    desc: Export the CLIP model into models/ (needs Python with torch; see docs/build.md)
+    dir: tools/clip-export
+    cmds:
+      - python export.py
+
+  build:linux:
+    desc: Build Linux amd64 binary into build/bin/MemoryArchive
+    cmds:
+      - wails build -clean -platform linux/amd64 -tags "{{.WEBKIT_TAGS}}" -ldflags "{{.LDFLAGS}}"
+
+  build:windows:
+    desc: Cross-build Windows amd64 .exe (needs mingw-w64-gcc because of cgo/onnxruntime)
+    env:
+      CGO_ENABLED: "1"
+      CC: x86_64-w64-mingw32-gcc
+      CXX: x86_64-w64-mingw32-g++
+    cmds:
+      - wails build -platform windows/amd64 -ldflags "{{.LDFLAGS}}"
+
+  package:linux:
+    desc: Build and assemble dist/MemoryArchive-linux (+ zip) with model and onnxruntime
+    deps: [build:linux]
+    cmds:
+      - rm -rf dist/MemoryArchive-linux && mkdir -p dist/MemoryArchive-linux/models
+      - cp build/bin/MemoryArchive dist/MemoryArchive-linux/
+      - cp models/clip-image.onnx models/clip-labels.json dist/MemoryArchive-linux/models/ || echo "WARN no CLIP model — rules-only build"
+      - cp models/lib/linux/libonnxruntime.so dist/MemoryArchive-linux/ || echo "WARN no onnxruntime — rules-only build"
+      - cd dist && rm -f MemoryArchive-linux.zip && zip -qr MemoryArchive-linux.zip MemoryArchive-linux
+
+  package:windows:
+    desc: Build and assemble dist/MemoryArchive-windows (+ zip) with model and onnxruntime.dll
+    deps: [build:windows]
+    cmds:
+      - rm -rf dist/MemoryArchive-windows && mkdir -p dist/MemoryArchive-windows/models
+      - cp build/bin/MemoryArchive.exe dist/MemoryArchive-windows/
+      - cp models/clip-image.onnx models/clip-labels.json dist/MemoryArchive-windows/models/ || echo "WARN no CLIP model — rules-only build"
+      - cp models/lib/windows/onnxruntime.dll dist/MemoryArchive-windows/ || echo "WARN no onnxruntime.dll — rules-only build"
+      - cd dist && rm -f MemoryArchive-windows.zip && zip -qr MemoryArchive-windows.zip MemoryArchive-windows
