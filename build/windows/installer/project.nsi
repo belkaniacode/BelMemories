@@ -30,6 +30,10 @@ Unicode true
 ####
 ## !define REQUEST_EXECUTION_LEVEL "admin"            # Default "admin"  see also https://nsis.sourceforge.io/Docs/Chapter4.html
 ####
+## BelMemories: per-user install (no admin rights), into %LOCALAPPDATA%\Programs\BelMemories.
+!define REQUEST_EXECUTION_LEVEL "user"
+!define WAILS_INSTALL_SCOPE "user"
+####
 ## Include the wails tools
 ####
 !include "wails_tools.nsh"
@@ -65,13 +69,14 @@ ManifestDPIAware true
 !insertmacro MUI_UNPAGE_INSTFILES # Uinstalling page
 
 !insertmacro MUI_LANGUAGE "English" # Set the Language of the installer
+!insertmacro MUI_LANGUAGE "Russian" # Picked automatically on a Russian Windows
 
 ## The following two statements can be used to sign the installer and the uninstaller. The path to the binaries are provided in %1
 #!uninstfinalize 'signtool --file "%1"'
 #!finalize 'signtool --file "%1"'
 
 Name "${INFO_PRODUCTNAME}"
-OutFile "..\..\bin\${INFO_PROJECTNAME}-${ARCH}-installer.exe" # Name of the installer's file.
+OutFile "..\..\bin\${INFO_PROJECTNAME}-Setup-${INFO_PRODUCTVERSION}.exe" # Name of the installer's file.
 !ifdef WAILS_INSTALL_SCOPE
   !if "${WAILS_INSTALL_SCOPE}" == "user"
     InstallDir "$LOCALAPPDATA\Programs\${INFO_PRODUCTNAME}"
@@ -95,6 +100,19 @@ Section
     SetOutPath $INSTDIR
 
     !insertmacro wails.files
+
+    # CLIP model and onnxruntime.dll (placed into installer\payload by the
+    # release build, see .github/workflows/release.yml). Without them the app
+    # still works in rules-only mode.
+    !if /FileExists "payload\onnxruntime.dll"
+        File "payload\onnxruntime.dll"
+    !endif
+    !if /FileExists "payload\models\clip-image.onnx"
+        SetOutPath "$INSTDIR\models"
+        File "payload\models\clip-image.onnx"
+        File "payload\models\clip-labels.json"
+        SetOutPath $INSTDIR
+    !endif
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"

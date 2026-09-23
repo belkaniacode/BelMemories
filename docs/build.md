@@ -36,6 +36,7 @@ sudo pacman -S --needed python-pillow
 | `task build:linux` | build `build/bin/BelMemories` |
 | `task build:windows` | build `build/bin/BelMemories.exe` (needs `mingw-w64-gcc`) |
 | `task package:linux` / `package:windows` | assemble a ready-to-ship folder and zip in `dist/` |
+| `task package:appimage` | Linux AppImage in `dist/` (one file with the model and `onnxruntime`) |
 | `task install:linux` | build and add the app to the Linux menu with its icon (`~/.local/share`, no root) |
 | `task icons -- icon.png` | regenerate all icons from one PNG |
 
@@ -68,6 +69,8 @@ You can also build natively on Windows (Go + Node.js + [MSYS2 mingw-w64](https:/
 The version has one source: `info.productVersion` in `wails.json` (`1.1.0`). The app embeds that file, so "About", the log and the Windows `.exe` properties always show the same version — also in `wails dev`, with no `-ldflags` needed.
 
 Releases use semantic versioning — `1.1.0` → `1.1.1` for fixes, `1.2.0` for new features, `2.0.0` for breaking changes:
+
+Pushing a `v*` tag starts the GitHub Actions workflow `.github/workflows/release.yml`. It exports the CLIP model (cached), builds the Windows installer (`wails build -nsis`, per-user install, model and `onnxruntime.dll` from `build/windows/installer/payload`) and the Linux AppImage (`scripts/build-appimage.sh`), and publishes both on the release page.
 
 ```bash
 task version              # print the current version

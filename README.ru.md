@@ -8,14 +8,18 @@
 
 ## Быстрый старт
 
-- **Windows 10/11**: распакуйте архив с программой и запустите `BelMemories.exe`.
-- **Arch Linux**:
+Скачайте из [Releases](https://github.com/belkaniacode/BelMemories/releases/latest):
+
+- **Windows 10/11**: `BelMemories-Setup-<версия>.exe` — запустите установщик (права администратора не нужны; ставится в `%LOCALAPPDATA%\Programs\BelMemories`, ярлыки в меню «Пуск» и на рабочем столе, удаление — через «Приложения»).
+- **Linux**: `BelMemories-<версия>-x86_64.AppImage` — один файл, устанавливать ничего не нужно:
 
 ```bash
-sudo pacman -S --needed webkit2gtk-4.1
-./BelMemories
-./install-linux.sh ./BelMemories   # необязательно: пункт в меню и иконка на панели задач
+sudo pacman -S --needed webkit2gtk-4.1        # Debian/Ubuntu: sudo apt install libwebkit2gtk-4.1-0
+chmod +x BelMemories-*-x86_64.AppImage
+./BelMemories-*-x86_64.AppImage
 ```
+
+Нейросеть CLIP уже внутри обоих файлов.
 
 Сборка из исходников описана в [docs/ru/build.md](docs/ru/build.md).
 

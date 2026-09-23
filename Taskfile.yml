@@ -96,6 +96,12 @@ tasks:
       - cp models/lib/linux/libonnxruntime.so dist/BelMemories-linux/ || echo "WARN no onnxruntime — rules-only build"
       - cd dist && rm -f BelMemories-linux.zip && zip -qr BelMemories-linux.zip BelMemories-linux
 
+  package:appimage:
+    desc: Build the Linux AppImage (one file with model + onnxruntime) into dist/
+    deps: [build:linux]
+    cmds:
+      - scripts/build-appimage.sh build/bin/BelMemories dist
+
   package:windows:
     desc: Build and assemble dist/BelMemories-windows (+ zip) with model and onnxruntime.dll
     deps: [build:windows]

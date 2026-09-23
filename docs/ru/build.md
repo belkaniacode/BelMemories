@@ -36,6 +36,7 @@ sudo pacman -S --needed python-pillow
 | `task build:linux` | собрать `build/bin/BelMemories` |
 | `task build:windows` | собрать `build/bin/BelMemories.exe` (нужен `mingw-w64-gcc`) |
 | `task package:linux` / `package:windows` | собрать готовую папку и zip в `dist/` |
+| `task package:appimage` | AppImage для Linux в `dist/` (один файл с моделью и `onnxruntime`) |
 | `task install:linux` | собрать и добавить программу в меню Linux с иконкой (`~/.local/share`, без root) |
 | `task icons -- icon.png` | пересоздать все иконки из одного PNG |
 
@@ -68,6 +69,8 @@ CC="zig cc -target x86_64-windows-gnu" CXX="zig c++ -target x86_64-windows-gnu" 
 У версии один источник — `info.productVersion` в `wails.json` (`1.1.0`). Программа встраивает этот файл, поэтому «О программе», журнал и свойства `.exe` в Windows всегда показывают одну и ту же версию — и в `wails dev` тоже, без `-ldflags`.
 
 Выпуски нумеруются по семантическим версиям: `1.1.0` → `1.1.1` для исправлений, `1.2.0` для новых возможностей, `2.0.0` для несовместимых изменений:
+
+Отправка тега `v*` запускает GitHub Actions `.github/workflows/release.yml`. Он экспортирует модель CLIP (с кэшем), собирает установщик для Windows (`wails build -nsis`, установка для пользователя, модель и `onnxruntime.dll` из `build/windows/installer/payload`) и AppImage для Linux (`scripts/build-appimage.sh`) и публикует оба файла на странице релиза.
 
 ```bash
 task version              # показать текущую версию

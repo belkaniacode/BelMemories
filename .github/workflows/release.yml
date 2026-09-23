@@ -1,0 +1,146 @@
+# Builds release downloads when a version tag is pushed (task release -- X.Y.Z,
+# then git push --follow-tags):
+#   BelMemories-Setup-X.Y.Z.exe          Windows installer (per user, no admin)
+#   BelMemories-X.Y.Z-x86_64.AppImage    Linux, one file: chmod +x and run
+# Both include the CLIP model and onnxruntime.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  WAILS_VERSION: v2.16.0
+  NODE_VERSION: "22"
+
+jobs:
+  model:
+    name: CLIP model
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: models
+          key: clip-model-${{ hashFiles('tools/clip-export/**') }}
+      - if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Export model
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet transformers onnx onnxruntime
+          python tools/clip-export/export.py --out models
+      - name: onnxruntime (Linux + Windows)
+        run: scripts/fetch-onnxruntime.sh all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: models
+          path: models
+          retention-days: 3
+
+  linux:
+    name: Linux AppImage
+    needs: model
+    runs-on: ubuntu-22.04 # older glibc → runs on current distros too
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: System packages
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq libgtk-3-dev libwebkit2gtk-4.1-dev
+      - run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: models
+          path: models
+      - name: Tests
+        run: go test ./internal/...
+      - name: Build
+        run: wails build -platform linux/amd64 -tags webkit2_41
+      - name: AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: scripts/build-appimage.sh build/bin/BelMemories dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/*.AppImage
+
+  windows:
+    name: Windows installer
+    needs: model
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: models
+          path: models
+      - name: Installer payload (model + onnxruntime.dll)
+        shell: bash
+        run: |
+          mkdir -p build/windows/installer/payload/models
+          cp models/lib/windows/onnxruntime.dll build/windows/installer/payload/
+          cp models/clip-image.onnx models/clip-labels.json build/windows/installer/payload/models/
+      - name: NSIS
+        shell: bash
+        run: |
+          if ! command -v makensis >/dev/null; then
+            if [ -d "/c/Program Files (x86)/NSIS" ]; then
+              echo "C:\\Program Files (x86)\\NSIS" >> "$GITHUB_PATH"
+            else
+              choco install nsis -y --no-progress
+              echo "C:\\Program Files (x86)\\NSIS" >> "$GITHUB_PATH"
+            fi
+          fi
+      - name: Build
+        run: wails build -platform windows/amd64 -nsis
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: build/bin/*-Setup-*.exe
+
+  release:
+    name: Publish release
+    needs: [linux, windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: out/*
+          generate_release_notes: true
+          body: |
+            ## Download / Скачать
+
+            | | |
+            |---|---|
+            | **Windows 10/11** | `BelMemories-Setup-*.exe` — installer, no admin rights needed / установщик, права администратора не нужны |
+            | **Linux** | `BelMemories-*-x86_64.AppImage` — `chmod +x` and run / сделать исполняемым и запустить. Needs / нужен `webkit2gtk-4.1` |
+
+            The CLIP model is included / нейросеть CLIP уже внутри.

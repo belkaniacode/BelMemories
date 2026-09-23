@@ -8,14 +8,18 @@ A desktop app for Linux and Windows. It scans drives and folders (including phon
 
 ## Quick start
 
-- **Windows 10/11**: unpack the release archive and run `BelMemories.exe`.
-- **Arch Linux**:
+Download from [Releases](https://github.com/belkaniacode/BelMemories/releases/latest):
+
+- **Windows 10/11**: `BelMemories-Setup-<version>.exe` — run the installer (no admin rights needed; installs to `%LOCALAPPDATA%\Programs\BelMemories` with Start menu and desktop shortcuts, uninstall from "Apps").
+- **Linux**: `BelMemories-<version>-x86_64.AppImage` — one file, nothing to install:
 
 ```bash
-sudo pacman -S --needed webkit2gtk-4.1
-./BelMemories
-./install-linux.sh ./BelMemories   # optional: menu entry and taskbar icon
+sudo pacman -S --needed webkit2gtk-4.1        # Debian/Ubuntu: sudo apt install libwebkit2gtk-4.1-0
+chmod +x BelMemories-*-x86_64.AppImage
+./BelMemories-*-x86_64.AppImage
 ```
+
+Both downloads already include the CLIP model.
 
 To build from source, see [docs/build.md](docs/build.md).
 

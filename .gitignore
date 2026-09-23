@@ -23,3 +23,7 @@ models/*
 .DS_Store
 Thumbs.db
 frontend/package.json.md5
+
+# Release payload for the Windows installer (CI)
+build/windows/installer/payload/
+.cache/
