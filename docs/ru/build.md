@@ -115,8 +115,10 @@ python export.py --labels-only          # → models/clip-labels.json
 
 Где программа ищет файлы:
 
-- модель: папка из настроек → `<папка программы>/models` → `./models` → `<конфиг>/BelMemories/models`;
+- модель: папка из настроек → `<папка программы>/models` → `./models` → `<данные>/BelMemories/models` (`~/.local/share` в Linux, `%LOCALAPPDATA%` в Windows) → `<конфиг>/BelMemories/models`;
 - `onnxruntime`: рядом с программой → `models/lib/<os>/` → `models/lib/` → системные пути (`/usr/lib`).
+
+Программа, запущенная из меню, работает с домашней папкой как рабочей, поэтому `./models` там не помогает. Поэтому `task install:linux` (`scripts/install-linux.sh`) копирует модель и `libonnxruntime.so` ещё и в `~/.local/share/BelMemories/models`.
 
 Версия `onnxruntime` должна поддерживать C API ≥ 29 (1.29+). Другую версию можно скачать так: `ORT_VERSION=1.30.0 scripts/fetch-onnxruntime.sh`.
 

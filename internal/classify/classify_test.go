@@ -155,3 +155,22 @@ func TestTransparencyDetection(t *testing.T) {
 		}
 	}
 }
+
+// Started from the desktop menu the working directory is $HOME and the binary
+// sits elsewhere: the model installed in the per-user data dir must be found.
+func TestFindModelDirInUserDataDir(t *testing.T) {
+	data := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", data)
+	t.Setenv("LOCALAPPDATA", data)
+	models := filepath.Join(data, "BelMemories", "models")
+	if err := os.MkdirAll(models, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(models, ModelFile), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(t.TempDir()) // like $HOME: no models/ here
+	if got := FindModelDir(""); got != models {
+		t.Fatalf("FindModelDir = %q, want %q", got, models)
+	}
+}

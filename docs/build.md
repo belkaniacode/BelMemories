@@ -115,8 +115,10 @@ If the export fails with `broken text embedding`, the weight cache in `~/.cache/
 
 Where the app looks for files:
 
-- model: folder from the settings → `<app folder>/models` → `./models` → `<config>/BelMemories/models`;
+- model: folder from the settings → `<app folder>/models` → `./models` → `<data>/BelMemories/models` (`~/.local/share` on Linux, `%LOCALAPPDATA%` on Windows) → `<config>/BelMemories/models`;
 - `onnxruntime`: next to the executable → `models/lib/<os>/` → `models/lib/` → system paths (`/usr/lib`).
+
+A program started from the desktop menu runs with the home folder as its working directory, so `./models` does not help there. `task install:linux` (`scripts/install-linux.sh`) therefore also copies the model and `libonnxruntime.so` to `~/.local/share/BelMemories/models`.
 
 The `onnxruntime` version must support C API ≥ 29 (1.29+). To download a different version: `ORT_VERSION=1.30.0 scripts/fetch-onnxruntime.sh`.
 

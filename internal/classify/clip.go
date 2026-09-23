@@ -279,11 +279,15 @@ func FindModelDir(preferred string) string {
 	if wd, err := os.Getwd(); err == nil {
 		dirs = append(dirs, filepath.Join(wd, "models"))
 	}
+	// Installed by scripts/install-linux.sh (the menu entry runs with $HOME as
+	// the working directory, far from the binary's models/ folder).
+	dirs = append(dirs, filepath.Join(logging.AppDataDir(), "models"))
 	dirs = append(dirs, filepath.Join(logging.AppConfigDir(), "models"))
 	for _, d := range dirs {
 		if _, err := os.Stat(filepath.Join(d, ModelFile)); err == nil {
 			return d
 		}
 	}
+	logging.Component("classify").Warn("[FIX] clip model not found", "searched", dirs)
 	return ""
 }

@@ -104,7 +104,7 @@ Records are JSON with the fields `component`, `path`, `err`.
 
 ## CLIP neural network
 
-The model is searched in this order: `modelDir` from the settings, the `models/` folder next to the executable, `./models`, `<config>/BelMemories/models`. The `onnxruntime` library is searched next to the executable, in `models/lib/`, then in system paths.
+The model is searched in this order: `modelDir` from the settings, the `models/` folder next to the executable, `./models`, `<data>/BelMemories/models` (`~/.local/share/BelMemories/models` on Linux, `%LOCALAPPDATA%\BelMemories\models` on Windows; filled by `task install:linux`), `<config>/BelMemories/models`. The `onnxruntime` library is searched next to the executable, in `models/lib/`, then in system paths.
 
 If something is missing, the app falls back to rules only. The Destination screen shows this with a "rules only" label and the reason.
 

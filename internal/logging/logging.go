@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -93,6 +94,32 @@ func AppConfigDir() string {
 	base, err := os.UserConfigDir()
 	if err != nil || base == "" {
 		base = "."
+	}
+	return filepath.Join(base, AppDirName)
+}
+
+// AppDataDir is the per-user data folder for large files such as the CLIP
+// model: $XDG_DATA_HOME (default ~/.local/share) on Linux, %LOCALAPPDATA% on
+// Windows, ~/Library/Application Support on macOS.
+func AppDataDir() string {
+	var base string
+	switch runtime.GOOS {
+	case "windows":
+		base = os.Getenv("LOCALAPPDATA")
+	case "darwin":
+		if home, err := os.UserHomeDir(); err == nil {
+			base = filepath.Join(home, "Library", "Application Support")
+		}
+	default:
+		base = os.Getenv("XDG_DATA_HOME")
+		if base == "" {
+			if home, err := os.UserHomeDir(); err == nil {
+				base = filepath.Join(home, ".local", "share")
+			}
+		}
+	}
+	if base == "" {
+		return AppConfigDir()
 	}
 	return filepath.Join(base, AppDirName)
 }

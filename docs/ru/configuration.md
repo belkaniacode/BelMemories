@@ -104,7 +104,7 @@ LOG_LEVEL=debug ./BelMemories   # решение по каждому файлу:
 
 ## Нейросеть CLIP
 
-Модель ищется в таком порядке: `modelDir` из настроек, папка `models/` рядом с программой, `./models`, `<конфиг>/BelMemories/models`. Библиотека `onnxruntime` ищется рядом с программой, в `models/lib/`, затем в системных путях.
+Модель ищется в таком порядке: `modelDir` из настроек, папка `models/` рядом с программой, `./models`, `<данные>/BelMemories/models` (`~/.local/share/BelMemories/models` в Linux, `%LOCALAPPDATA%\BelMemories\models` в Windows; заполняется `task install:linux`), `<конфиг>/BelMemories/models`. Библиотека `onnxruntime` ищется рядом с программой, в `models/lib/`, затем в системных путях.
 
 Если чего-то не хватает, программа работает только по правилам. На экране «Назначение» это видно по метке «только правила» с указанием причины.
 
